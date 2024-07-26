@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4 animate__animated animate__fadeIn">
+    <h1 class="text-center" style="color: #fffdf1; font-size: x-large; margin-bottom: 10%;">˚◡˚</h1>
+    <div class="row justify-content-center">
+        {% for movie in movies %}
+        <div class="col-6 col-md-4 col-lg-3 mb-4">
+            <div class="card movie-card" onclick="window.location.href='{{ url_for('views.movie_details', movie_id=movie.tmdb_id) }}'">
+                <img src="{{ movie.cover_url }}" class="card-img-top movie-thumbnail" alt="{{ movie.title }}">
+                <div class="card-body movie-info">
+                    <h5 class="movie-title">{{ movie.title }}</h5>
+                    <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteMovie('{{ movie.id }}')">Delete</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function deleteMovie(movieId) {
+    fetch('/delete-movie', {
+        method: 'POST',
+        body: JSON.stringify({ movie_id: movieId }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(response => response.json()).then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            showAlert('Failed to delete movie.', 'danger');
+        }
+    });
+}
+
+function showAlert(message, type) {
+    const alertPlaceholder = document.getElementById('alert-placeholder');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    alertPlaceholder.append(wrapper);
+    setTimeout(() => {
+        wrapper.remove();
+    }, 3000);
+}
+
+function addMovie(movieId, title, coverUrl, watched) {
+    fetch('/add-movie', {
+        method: 'POST',
+        body: JSON.stringify({ movie_id: movieId, title: title, cover_url: coverUrl, watched: watched }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(response => response.json()).then(data => {
+        if (data.success) {
+            showAlert('Movie added to your list.', 'success');
+        } else {
+            showAlert(data.message || 'Failed to add movie.', 'danger');
+        }
+    });
+}
+</script>
+
+<style>
+.movie-card {
+    display: inline-block;
+    width: 100%;
+    max-width: 180px; /* Adjusted width to prevent distortion */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fef7dc; /* Yellowish-white background */
+    transition: transform 0.3s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+.movie-card:hover {
+    transform: scale(1.1);
+    text-decoration: none; /* Remove underline on hover */
+}
+
+.movie-thumbnail {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.movie-info {
+    padding: 10px;
+    text-align: center;
+    background-color: #fef7dc; /* Yellowish-white background */
+}
+
+.movie-title {
+    font-size: 16px;
+    margin: 10px 0;
+    color: #000; /* Black text */
+}
+
+#alert-placeholder {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    width: auto;
+}
+</style>
+
+<div id="alert-placeholder"></div>
+{% endblock %}

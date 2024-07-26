@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4 animate__animated animate__fadeIn">
+    <h1 class="text-center" style="color: #FFD700;">Recommended Movies</h1>
+    <div class="row justify-content-center" id="recommendations-container">
+        {% if not movies %}
+        <div class="col-12 text-center" style="color: #FFD700;">
+            <p>Please add some movies to your Watched or To Watch list to get recommendations.</p>
+        </div>
+        {% else %}
+        {% for movie in movies %}
+        <div class="col-md-3 mb-4 movie-card-container" id="movie-{{ movie.id }}">
+            <div class="card movie-card">
+                <img src="https://image.tmdb.org/t/p/w200{{ movie.poster_path if movie.poster_path else '/static/img/no-image-available.png' }}" class="card-img-top movie-thumbnail" alt="{{ movie.title }}">
+                <div class="card-body movie-info">
+                    <h5 class="movie-title">{{ movie.title }}</h5>
+                    <p class="card-text" style="color: #000;">{{ movie.overview[:100] }}...</p>
+                    <div class="d-flex justify-content-around mt-2">
+                        <button class="btn btn-success btn-sm" onclick="addMovie('{{ movie.id }}', '{{ movie.title }}', '{{ 'https://image.tmdb.org/t/p/w200' + (movie.poster_path if movie.poster_path else '/static/img/no-image-available.png') }}', true)">Watched</button>
+                        <button class="btn btn-warning btn-sm" onclick="addMovie('{{ movie.id }}', '{{ movie.title }}', '{{ 'https://image.tmdb.org/t/p/w200' + (movie.poster_path if movie.poster_path else '/static/img/no-image-available.png') }}', false)">To Watch</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function addMovie(movieId, title, coverUrl, watched) {
+    fetch('/add-movie', {
+        method: 'POST',
+        body: JSON.stringify({ movie_id: movieId, title: title, cover_url: coverUrl, watched: watched }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(response => response.json()).then(data => {
+        if (data.success) {
+            // Remove the movie card from recommendations
+            document.getElementById('movie-' + movieId).remove();
+            // Fetch new recommendations to replace the removed ones
+            fetchNewRecommendations();
+        } else {
+            alert('Failed to add movie.');
+        }
+    });
+}
+
+function fetchNewRecommendations() {
+    fetch('/recommendations', {
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const container = document.getElementById('recommendations-container');
+        const existingCards = container.querySelectorAll('.movie-card-container');
+
+        // Remove the first 20 existing cards
+        for (let i = 0; i < 20 && i < existingCards.length; i++) {
+            container.removeChild(existingCards[i]);
+        }
+
+        // Add new recommendations
+        data.slice(0, 20).forEach(movie => {
+            const movieElement = document.createElement('div');
+            movieElement.classList.add('col-md-3', 'mb-4', 'movie-card-container');
+            movieElement.id = 'movie-' + movie.id;
+            const posterPath = movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : '/static/img/no-image-available.png';
+            movieElement.innerHTML = `
+                <div class="card movie-card">
+                    <img src="${posterPath}" class="card-img-top movie-thumbnail" alt="${movie.title}">
+                    <div class="card-body movie-info">
+                        <h5 class="movie-title">${movie.title}</h5>
+                        <p class="card-text" style="color: #000;">${movie.overview.slice(0, 100)}...</p>
+                        <div class="d-flex justify-content-around mt-2">
+                            <button class="btn btn-success btn-sm" onclick="addMovie('${movie.id}', '${movie.title}', '${posterPath}', true)">Watched</button>
+                            <button class="btn btn-warning btn-sm" onclick="addMovie('${movie.id}', '${movie.title}', '${posterPath}', false)">To Watch</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(movieElement);
+        });
+    });
+}
+</script>
+
+<style>
+.movie-card {
+    display: inline-block;
+    width: 200px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fef7dc; /* Yellowish-white background */
+    transition: transform 0.3s;
+}
+
+.movie-card:hover {
+    transform: scale(1.1);
+}
+
+.movie-thumbnail {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.movie-info {
+    padding: 10px;
+    text-align: center;
+    background-color: #fef7dc; /* Yellowish-white background */
+}
+
+.movie-title {
+    font-size: 16px;
+    margin: 10px 0;
+    color: #000; /* Black text */
+}
+
+.card-text {
+    font-size: 14px;
+    color: #000; /* Black text */
+}
+</style>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4 animate__animated animate__fadeIn">
+    <div class="row">
+        <div class="col-12">
+            <div class="movie-backdrop" style="background: url('https://image.tmdb.org/t/p/original{{ movie.backdrop_path }}'); background-size: cover; background-position: center; height: 400px; border-radius: 15px;">
+                <div class="backdrop-overlay"></div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="movie-details-content p-4 rounded" style="background-color: rgba(20, 30, 48, 0.8); color: #fffced; border-radius: 15px;">
+                <div class="card movie-card" style="background-color: rgba(20, 30, 48, 0.8); color: #fffced; border-radius: 15px;">
+                    <div class="card-body">
+                        <h2 class="card-title">{{ movie.title }}</h2>
+                        <p><strong>Release Date:</strong> {{ movie.release_date }}</p>
+                        <p><strong>Rating:</strong> {{ movie.vote_average }}</p>
+                        <p><strong>Genres:</strong> {{ movie.genres | map(attribute='name') | join(', ') }}</p>
+                        <p><strong>Runtime:</strong> {{ movie.runtime }} minutes</p>
+                        <p>{{ movie.overview }}</p>
+                        <div class="mt-4">
+                            <button class="btn btn-success btn-lg" onclick="addMovie('{{ movie.id }}', '{{ movie.title }}', '{{ 'https://image.tmdb.org/t/p/w300' + (movie.poster_path if movie.poster_path else '/static/img/no-image-available.png') }}', true)">Watched</button>
+                            <button class="btn btn-warning btn-lg ml-2" onclick="addMovie('{{ movie.id }}', '{{ movie.title }}', '{{ 'https://image.tmdb.org/t/p/w300' + (movie.poster_path if movie.poster_path else '/static/img/no-image-available.png') }}', false)">To Watch</button>
+                        </div>
+                        <a href="{{ url_for('views.home') }}" class="btn btn-primary mt-3">Back to Home</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addMovie(movieId, title, coverUrl, watched) {
+    fetch('/add-movie', {
+        method: 'POST',
+        body: JSON.stringify({ movie_id: movieId, title: title, cover_url: coverUrl, watched: watched }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(response => response.json()).then(data => {
+        if (data.success) {
+            showAlert('Movie added to your list.', 'success');
+        } else {
+            showAlert(data.message || 'Failed to add movie.', 'danger');
+        }
+    });
+}
+
+function showAlert(message, type) {
+    const alertPlaceholder = document.getElementById('alert-placeholder');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    alertPlaceholder.append(wrapper);
+    setTimeout(() => {
+        wrapper.remove();
+    }, 3000);
+}
+</script>
+
+<style>
+.movie-backdrop {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.backdrop-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(20, 30, 48, 0.5);
+}
+
+.movie-details-content {
+    background-color: rgba(20, 30, 48, 0.8); /* Semi-transparent background */
+    color: #e1e1e1;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+}
+
+.movie-card {
+    background-color: rgba(20, 30, 48, 0.8);
+    color: #fffced;
+    border-radius: 15px;
+}
+
+.btn-lg {
+    padding: 10px 20px;
+    font-size: 16px;
+}
+
+#alert-placeholder {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    width: auto;
+}
+</style>
+
+<div id="alert-placeholder"></div>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jumbotron text-center animate__animated animate__fadeIn" style="background-color: rgba(20, 30, 48, 0.8); color: #fffced; border-radius: 15px; padding: 3rem; width: 100%;">
+    <h1 class="display-4">⎦˚◡˚⎣</h1>
+  
+    <hr class="my-4" style="border-color: #fffadf;">
+    <p style="color: #fbf6d6;">Discover new favorites and get recommendations for the best movies.<br> Start by searching for a movie to add to your list.</p>
+</div>
+
+<form id="search-form" class="animate__animated animate__fadeInUp">
+    <div class="form-group">
+        <input type="text" class="form-control" id="query" placeholder="Search for movies...">
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Search</button>
+</form>
+
+<div class="mt-4 d-flex flex-wrap justify-content-center" id="search-results">
+    <!-- Search results will be displayed here -->
+</div>
+
+<div class="mt-4">
+    <h2 class="text-center">Recommended Movies</h2>
+    <div class="container mt-4 animate__animated animate__fadeIn">
+        <div class="row justify-content-center" id="recommendations-container">
+            {% if not recommended_movies %}
+            <div class="col-12 text-center" style="color: #FFD700;">
+                <p>Please add some movies to your Watched or To Watch list to get recommendations.</p>
+            </div>
+            {% else %}
+            {% for movie in recommended_movies %}
+            <div class="col-6 col-md-3 mb-4 movie-card-container" id="movie-{{ movie.id }}" onclick="window.location.href='/movie/{{ movie.id }}'">
+                <div class="card movie-card">
+                    <img src="https://image.tmdb.org/t/p/w200{{ movie.poster_path if movie.poster_path else '/static/img/no-image-available.png' }}" class="card-img-top movie-thumbnail" alt="{{ movie.title }}">
+                    <div class="card-body movie-info">
+                        <h5 class="movie-title">{{ movie.title }}</h5>
+                        <div class="d-flex justify-content-around mt-2">
+                            <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); addMovie('{{ movie.id }}', '{{ movie.title }}', '{{ 'https://image.tmdb.org/t/p/w200' + (movie.poster_path if movie.poster_path else '/static/img/no-image-available.png') }}', true)">Watched</button>
+                            <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); addMovie('{{ movie.id }}', '{{ movie.title }}', '{{ 'https://image.tmdb.org/t/p/w200' + (movie.poster_path if movie.poster_path else '/static/img/no-image-available.png') }}', false)">To Watch</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('search-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const query = document.getElementById('query').value;
+
+    fetch('/search-movie', {
+        method: 'POST',
+        body: JSON.stringify({ query: query }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(response => response.json()).then(data => {
+        const results = document.getElementById('search-results');
+        results.innerHTML = '';
+
+        data.forEach(movie => {
+            const movieElement = document.createElement('div');
+            movieElement.classList.add('col-6', 'col-md-3', 'mb-4', 'movie-card-container');
+            const posterPath = movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : '/static/img/no-image-available.png';
+            movieElement.innerHTML = `
+                <div class="card movie-card" onclick="window.location.href='/movie/${movie.id}'">
+                    <img src="${posterPath}" class="card-img-top movie-thumbnail" alt="${movie.title}">
+                    <div class="card-body movie-info">
+                        <h5 class="movie-title">${movie.title}</h5>
+                        <div class="d-flex justify-content-around mt-2">
+                            <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); addMovie('${movie.id}', '${movie.title}', '${posterPath}', true)">Watched</button>
+                            <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); addMovie('${movie.id}', '${movie.title}', '${posterPath}', false)">To Watch</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            results.appendChild(movieElement);
+        });
+    });
+});
+
+function addMovie(movieId, title, coverUrl, watched) {
+    fetch('/add-movie', {
+        method: 'POST',
+        body: JSON.stringify({ movie_id: movieId, title: title, cover_url: coverUrl, watched: watched }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(response => response.json()).then(data => {
+        if (data.success) {
+            showAlert('Movie added to your list.', 'success');
+            updateRecommendations(data.recommended_movies);
+        } else {
+            showAlert(data.message || 'Failed to add movie.', 'danger');
+        }
+    });
+}
+
+function updateRecommendations(movies) {
+    const container = document.getElementById('recommendations-container');
+    container.innerHTML = ''; // Clear existing recommendations
+
+    movies.slice(0, 100).forEach(movie => { // Display up to 100 movies
+        const movieElement = document.createElement('div');
+        movieElement.classList.add('col-6', 'col-md-3', 'mb-4', 'movie-card-container');
+        movieElement.id = 'movie-' + movie.id;
+        const posterPath = movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : '/static/img/no-image-available.png';
+        movieElement.innerHTML = `
+            <div class="card movie-card" onclick="window.location.href='/movie/${movie.id}'">
+                <img src="${posterPath}" class="card-img-top movie-thumbnail" alt="${movie.title}">
+                <div class="card-body movie-info">
+                    <h5 class="movie-title">${movie.title}</h5>
+                    <div class="d-flex justify-content-around mt-2">
+                        <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); addMovie('${movie.id}', '${movie.title}', '${posterPath}', true)">Watched</button>
+                        <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); addMovie('${movie.id}', '${movie.title}', '${posterPath}', false)">To Watch</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(movieElement);
+    });
+}
+
+function showAlert(message, type) {
+    const alertPlaceholder = document.getElementById('alert-placeholder');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    alertPlaceholder.append(wrapper);
+    setTimeout(() => {
+        wrapper.remove();
+    }, 3000);
+}
+</script>
+
+<style>
+.movie-card {
+    display: inline-block;
+    width: 100%;
+    max-width: 180px; /* Adjusted width to prevent distortion */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fef7dc; /* Yellowish-white background */
+    transition: transform 0.3s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+.movie-card:hover {
+    transform: scale(1.1);
+}
+
+.movie-thumbnail {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.movie-info {
+    padding: 10px;
+    text-align: center;
+    background-color: #fef7dc; /* Yellowish-white background */
+}
+
+.movie-title {
+    font-size: 16px;
+    margin: 10px 0;
+    color: #000; /* Black text */
+}
+
+#alert-placeholder {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    width: auto;
+}
+
+#search-form {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid #444;
+    border-radius: 25px;
+    overflow: hidden;
+    background-color: #333;
+}
+
+.form-control {
+    flex-grow: 1;
+    border: none;
+    border-radius: 0;
+    padding: 0.5rem 1rem;
+    background-color: transparent;
+    color: #e1e1e1;
+}
+
+.form-control::placeholder {
+    color: #999;
+}
+
+.form-control:focus {
+    box-shadow: none;
+}
+
+.btn-primary {
+    background-color: #0e182e;
+    border: none;
+    border-radius: 25px;
+    color: #d6d6d6;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: rgb(10, 15, 37);
+    color: #d6d6d6;
+}
+
+/* Styling for recommended movies section */
+.movie-card-container {
+    display: inline-block;
+    margin-right: 10px;
+    vertical-align: top;
+}
+
+@media (max-width: 767.98px) {
+    .movie-card-container {
+        max-width: 50%; /* Display 2 cards per row on small screens */
+    }
+}
+</style>
+
+<div id="alert-placeholder"></div>
+{% endblock %}
